@@ -249,12 +249,9 @@ def process_image(image_path):
     np_image = (np_image - mean) / std
         
     # Change to a torch tensor
-    final_image = torch.from_numpy(np_image)
-    final_image = final_image.float()
-    #print(final_image.shape)
-    #print(final_image)
-    return final_image
+    final_image = torch.FloatTensor([np_image])
 
+    return final_image
 def imshow(image, ax=None, title=None):
     import matplotlib.pyplot as plt
     """Imshow for Tensor."""
