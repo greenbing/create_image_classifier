@@ -9,7 +9,6 @@ import torch.nn as nn
 from collections import OrderedDict
 from PIL import Image
 
-
 data_dir = 'flowers'
 train_dir = data_dir + '/train'
 valid_dir = data_dir + '/valid'
@@ -142,8 +141,9 @@ for epoch in range(epochs):
     # Print out the information
     print('Accuracy: ', accuracy/len(valid_loader))
     print('Epoch: {} \tTraining Loss: {:.6f} \tValidation Loss: {:.6f}'.format(epoch, train_loss, valid_loss))
-
-# TODO: Do validation on the test set
+    
+    
+    # TODO: Do validation on the test set
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu") 
 model.eval()
 accuracy = 0
@@ -185,7 +185,6 @@ checkpoint = save_checkpoint(model,'checkpoint.pth')
 #print(optimizer.state_dict())
 print(optimizer)
 
-
 # TODO: Write a function that loads a checkpoint and rebuilds the model
 def load_checkpoint(path):
     checkpoint = torch.load(path)
@@ -205,7 +204,6 @@ def load_checkpoint(path):
 #checkpoint, model, optimizer = load_checkpoint('checkpoint.pth')
 #print(checkpoint,model,optimizer)
 
-
 def process_image(image_path):
     ''' Scales, crops, and normalizes a PIL image for a PyTorch model,
         returns an Numpy array
@@ -214,7 +212,7 @@ def process_image(image_path):
     #Load image
     image = Image.open(image_path)
     width, height = image.size
-    
+    print("original size: "+str(width)+" "+str(height) )
     # Resize to 256
     if width <= height:
         size = (256, int(256*height/width))
@@ -225,6 +223,7 @@ def process_image(image_path):
     
     #Get new width and height
     width, height = image.size
+    print("new size :"+str(width)+" "+str(height))
     
     # Crop image to 224x224
     left = (width - 224)/2
@@ -233,26 +232,31 @@ def process_image(image_path):
     bottom = (height + 224)/2
     image = image.crop((left, top, right, bottom))
     
-    np_image = np.array(image)
+    #print("new size 2: "+image.size )
+    np_image = np.array(image).transpose((2, 0, 1))
     np_image = np_image/255
     print(np_image.shape)
-    print(np_image)
     np_image = np.delete(image, 3, 2)
-    mean = np.array([0.485, 0.456, 0.406])
-    std = np.array([0.229, 0.224, 0.225])
-    np_image = (np_image - mean) / std
     
     # Reorder colour channel
-    np_image = np_image.transpose((2, 0, 1))
+    #np_image = np_image.transpose((2, 0, 1))
+    print(np_image)
+    print(np_image.shape)
+    mean = np.array([0.485, 0.456, 0.406])
+    std = np.array([0.229, 0.224, 0.225])
+    print(mean.shape)
+    print(std.shape)
+    np_image = (np_image - mean) / std
         
     # Change to a torch tensor
     final_image = torch.from_numpy(np_image)
     final_image = final_image.float()
-    print(final_image.shape)
-    print(final_image)
+    #print(final_image.shape)
+    #print(final_image)
     return final_image
 
 def imshow(image, ax=None, title=None):
+    import matplotlib.pyplot as plt
     """Imshow for Tensor."""
     if ax is None:
         fig, ax = plt.subplots()
@@ -273,15 +277,15 @@ def imshow(image, ax=None, title=None):
     
     return ax
 
-
 def predict(image_path, model, topk=5):
     ''' Predict the class (or classes) of an image using a trained deep learning model.
     '''
     # TODO: Implement the code to predict the class from an image file
     image = process_image(image_path)    
-    #print(image)
-    image = image.unsqueeze_(0).cuda()
-    #print(image)
+    print(image.shape)
+    #image = image.unsqueeze(0)
+    image = image.to(device)
+    print(image.shape)
     # Send image to get output
     output = model.forward(image)
     
@@ -289,27 +293,35 @@ def predict(image_path, model, topk=5):
     output = torch.exp(output)
     
     # Get the top predicted class, and the output percentage for that class
-    probs, classes = output.topk(topk, dim=1)
-    print(probs,classes)
-    return probs.item(), classes.item()
+    probs, classes = output.topk((1,topk), dim=1)
+    #print(probs,classes)
+    return probs, classes, image
 
 # TODO: Display an image along with the top 5 classes
 model.eval()
 class_names = []
 # Process Image
-image_path = 'input.PNG'
+image_path = 'input2.png'
 
 # Give image to model to predict output
-probs, classes = predict(image_path, model)
-
-image = process_image(image_path)
-# Show the image
-imshow(image)
+probs, classes, image = predict(image_path, model)
 print('probs: {} and classes: {}'.format(probs, classes))
 
+print(probs,classes)
+print(cat_to_name)
+print(model.class_to_idx)
+#probs=probs.detach.numpy()
+#classes=classes.detach.numpy()
+print(probs,classes)
+print(classes[0])
+for i in classes[0]:
+    class_names.append(model.class_to_idx.item(int(classes[0,i])))
+print(class_names)
 for c in classes:
     class_names.append(cat_to_name[c])
 print('classnames: {}'.format(class_names))
+# Show the image
+ax = imshow(image)
 plt.barh(probs, class_names)
 plt.xlabel('Probability')
 plt.title('Predicted Flower Names')
